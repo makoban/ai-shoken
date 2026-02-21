@@ -234,14 +234,9 @@ body {
 }
 
 .hero__character {
-  /* パン屋女性画像は横長(1024x775)のため、高さ基準で表示サイズを制御する。
-     OL2.png(896x1600)を width:400px で表示した場合の高さ約716pxに合わせる。
-     height:716px に対して 1024/775 の比率から width は自動計算で約946px になるが
-     max-width でクリップして右端からはみ出す形にする（背景装飾として機能させる）。 */
-  height: 716px;
-  max-height: 90vh;
-  width: auto;
-  max-width: none;
+  width: 400px;
+  max-width: 40vw;
+  height: auto;
   filter: drop-shadow(-20px 0 40px rgba(0,0,0,0.3));
   opacity: 1;
   mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
