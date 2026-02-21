@@ -1618,7 +1618,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Pricing Info
+   ai_shoken - Pricing Info
    ======================================== */
 .pricing-info {
   max-width: 720px;
@@ -1661,7 +1661,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Blurred (Paid) Content
+   ai_shoken - Blurred (Paid) Content
    ======================================== */
 .blurred-section .result-card__body {
   position: relative;
@@ -1703,7 +1703,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Badges
+   ai_shoken - Badges
    ======================================== */
 .badge-free {
   display: inline-block;
@@ -1726,7 +1726,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Purchase Prompt
+   ai_shoken - Purchase Prompt
    ======================================== */
 .purchase-prompt {
   display: none;
@@ -1837,7 +1837,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Sub Cards (inside result cards)
+   ai_shoken - Sub Cards (inside result cards)
    ======================================== */
 .sub-card {
   padding: 10px;
@@ -1854,7 +1854,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Excel Button
+   ai_shoken - Excel Button
    ======================================== */
 .btn-excel {
   display: flex;
@@ -1877,7 +1877,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - History Button
+   ai_shoken - History Button
    ======================================== */
 .header__history-btn {
   background: rgba(255, 255, 255, 0.1);
@@ -1898,7 +1898,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Area Select Button
+   ai_shoken - Area Select Button
    ======================================== */
 .area-select-btn {
   display: flex;
@@ -1923,7 +1923,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Footer Links
+   ai_shoken - Footer Links
    ======================================== */
 .footer__links {
   margin-top: 8px;
@@ -1948,7 +1948,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Market Summary
+   ai_shoken - Market Summary
    ======================================== */
 .market-summary {
   font-size: 14px;
@@ -1961,14 +1961,14 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Log items (fix class names)
+   ai_shoken - Log items (fix class names)
    ======================================== */
 .log-item--success { color: #10b981; }
 .log-item--info { color: #3b82f6; }
 .log-item--error { color: #ef4444; }
 
 /* ========================================
-   ai_fudosan - Autocomplete Dropdown
+   ai_shoken - Autocomplete Dropdown
    ======================================== */
 .search__autocomplete {
   position: relative;
@@ -2077,7 +2077,7 @@ body {
 }
 
 /* ========================================
-   ai_fudosan - Mobile Responsive additions
+   ai_shoken - Mobile Responsive additions
    ======================================== */
 @media (max-width: 768px) {
   .pricing-info {
