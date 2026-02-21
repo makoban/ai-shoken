@@ -1,5 +1,5 @@
 // ========================================
-// AI出店商圏レポート v1.0
+// AI出店商圏レポート v1.1
 // エリア入力 → 政府統計 + AI分析 → プレビュー/課金
 // ========================================
 
@@ -476,19 +476,26 @@ async function runAreaAnalysis(area) {
   if (_analysisRunning) return;
   _analysisRunning = true;
   currentArea = area;
-  isPurchased = await isAreaPurchasedAsync(area.fullLabel);
 
-  // 購入済みかつDBにデータがあれば即表示（再分析不要）
-  if (isPurchased && currentUser) {
-    var dbData = await _loadAnalysisDataFromDB(area.fullLabel);
-    if (dbData) {
-      analysisData = dbData;
-      document.getElementById('purchase-prompt').style.display = 'none';
-      renderResults(analysisData, true);
-      showResults();
-      _analysisRunning = false;
-      return;
+  // 購入チェック・DB読み込みを全体try-catchで囲み、_analysisRunningが確実にリセットされるよう保護
+  try {
+    isPurchased = await isAreaPurchasedAsync(area.fullLabel);
+
+    // 購入済みかつDBにデータがあれば即表示（再分析不要）
+    if (isPurchased && currentUser) {
+      var dbData = await _loadAnalysisDataFromDB(area.fullLabel);
+      if (dbData) {
+        analysisData = dbData;
+        document.getElementById('purchase-prompt').style.display = 'none';
+        renderResults(analysisData, true);
+        showResults();
+        _analysisRunning = false;
+        return;
+      }
     }
+  } catch (preErr) {
+    // 購入チェック失敗は致命的でないのでisAreaPurchased=falseとして続行
+    isPurchased = isAreaPurchased(area.fullLabel);
   }
 
   hideError();
