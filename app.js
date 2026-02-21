@@ -575,6 +575,8 @@ function buildShokenPrompt(area, estatPop) {
     'できる限り正確な数値を提供してください。正確な数値が不明な場合は、合理的な推計値を提供し、sourceフィールドに「推計」と明記してください。\n\n' +
     '重要ルール:\n' +
     '・avg_household_income, disposable_income は万円単位の数値で返してください\n' +
+    '・monthly_expenditure は万円/月の数値で返してください\n' +
+    '・consumer_spending の各項目は円/月の数値で返してください\n' +
     '・人口・世帯数は実数（人・世帯）で返してください\n' +
     '・パーセンテージは数値のみ（例: 25.3）で返してください\n' +
     '・shoken_summary は1000文字程度の日本語テキストで、商圏の特徴・出店メリット/デメリット・推奨業種を具体的に記述してください\n\n' +
@@ -611,8 +613,18 @@ function buildShokenPrompt(area, estatPop) {
       },
       spending_power: {
         avg_household_income: 0, disposable_income: 0,
+        monthly_expenditure: 0,
         retail_spending_index: 0, food_spending_index: 0,
-        note: 'avg_household_income, disposable_incomeは万円単位。spending_indexは全国平均=100'
+        service_spending_index: 0,
+        engel_coefficient: 0, eating_out_rate: 0,
+        note: 'income系は万円/年、monthly_expenditureは万円/月、index系は全国平均=100、coefficient/rateは%'
+      },
+      consumer_spending: {
+        food_total: 0, eating_out: 0, housing: 0, utilities: 0,
+        clothing: 0, medical: 0, transportation: 0, education: 0,
+        entertainment: 0, communication: 0, personal_care: 0,
+        social_expenses: 0, total_monthly: 0,
+        note: '全て円/月・世帯平均。家計調査ベースの推計値'
       },
       location_score: {
         overall_score: 0, traffic_score: 0, population_score: 0,
@@ -836,21 +848,79 @@ function renderResults(data, purchased) {
       '<div class="stat-grid">' +
       '<div class="stat-box"><div class="stat-box__value">' + (sp.avg_household_income ? formatNumber(toMan(sp.avg_household_income)) + '万' : '—') + '</div><div class="stat-box__label">平均世帯年収</div></div>' +
       '<div class="stat-box"><div class="stat-box__value">' + (sp.disposable_income ? formatNumber(toMan(sp.disposable_income)) + '万' : '—') + '</div><div class="stat-box__label">可処分所得</div></div>' +
+      '<div class="stat-box"><div class="stat-box__value">' + (sp.monthly_expenditure ? formatNumber(toMan(sp.monthly_expenditure)) + '万' : '—') + '</div><div class="stat-box__label">月間消費支出</div></div>' +
+      '<div class="stat-box"><div class="stat-box__value">' + (sp.engel_coefficient ? sp.engel_coefficient + '%' : '—') + '</div><div class="stat-box__label">エンゲル係数</div></div>' +
+      '</div>' +
+      '<div class="stat-grid" style="margin-top:8px;">' +
       '<div class="stat-box"><div class="stat-box__value">' + (sp.retail_spending_index || '—') + '</div><div class="stat-box__label">小売消費指数</div></div>' +
       '<div class="stat-box"><div class="stat-box__value">' + (sp.food_spending_index || '—') + '</div><div class="stat-box__label">飲食消費指数</div></div>' +
+      '<div class="stat-box"><div class="stat-box__value">' + (sp.service_spending_index || '—') + '</div><div class="stat-box__label">サービス消費指数</div></div>' +
+      '<div class="stat-box"><div class="stat-box__value">' + (sp.eating_out_rate ? sp.eating_out_rate + '%' : '—') + '</div><div class="stat-box__label">外食率</div></div>' +
       '</div>' +
-      '<p style="font-size:11px; color:var(--text-muted); margin-top:8px;">※消費指数は全国平均=100</p>' +
+      '<p style="font-size:11px; color:var(--text-muted); margin-top:8px;">※消費指数は全国平均=100 / エンゲル係数=食費÷消費支出×100</p>' +
       '</div></div>';
   }
 
-  // ⑧ 出店適性スコア（有料）
+  // ⑧ 消費支出内訳（有料・新規）
+  if (m.consumer_spending) {
+    var cs = m.consumer_spending;
+    var spendItems = [
+      { key: 'food_total', label: '食料費', color: '#f97316' },
+      { key: 'eating_out', label: '外食費', color: '#fb923c' },
+      { key: 'housing', label: '住居費', color: '#3b82f6' },
+      { key: 'utilities', label: '光熱・水道', color: '#60a5fa' },
+      { key: 'transportation', label: '交通費', color: '#8b5cf6' },
+      { key: 'communication', label: '通信費', color: '#a78bfa' },
+      { key: 'education', label: '教育費', color: '#ec4899' },
+      { key: 'entertainment', label: '教養娯楽費', color: '#f472b6' },
+      { key: 'medical', label: '医療費', color: '#14b8a6' },
+      { key: 'clothing', label: '被服費', color: '#2dd4bf' },
+      { key: 'personal_care', label: '理美容費', color: '#a3a3a3' },
+      { key: 'social_expenses', label: '交際費', color: '#78716c' }
+    ];
+    var maxVal = 0;
+    spendItems.forEach(function(it) { if ((cs[it.key] || 0) > maxVal) maxVal = cs[it.key]; });
+    if (maxVal === 0) maxVal = 1;
+
+    html += '<div class="result-card' + paidClass + '" data-section="paid">' +
+      '<div class="result-card__header"><div class="result-card__icon">🛒</div>' +
+      '<div><div class="result-card__title">⑧ 消費支出内訳</div>' +
+      '<div class="result-card__subtitle">' + (purchased ? '' : '<span class="badge-paid">有料</span>') + '</div></div></div>' +
+      '<div class="result-card__body">' + paidOverlay;
+
+    if (cs.total_monthly) {
+      html += '<div style="text-align:center; margin-bottom:16px;">' +
+        '<div style="font-size:11px; color:var(--text-muted);">世帯あたり月間消費支出</div>' +
+        '<div style="font-size:32px; font-weight:900; color:#10b981;">¥' + formatNumber(cs.total_monthly) + '<span style="font-size:14px; font-weight:400; color:var(--text-muted);">/月</span></div>' +
+        '</div>';
+    }
+
+    html += '<div style="display:flex; flex-direction:column; gap:6px;">';
+    spendItems.forEach(function(it) {
+      var val = cs[it.key] || 0;
+      var pct = maxVal > 0 ? Math.round(val / maxVal * 100) : 0;
+      html += '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<div style="width:80px; font-size:11px; color:var(--text-secondary); text-align:right;">' + it.label + '</div>' +
+        '<div style="flex:1; height:20px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">' +
+        '<div style="height:100%; width:' + pct + '%; background:' + it.color + '; border-radius:4px; transition:width 0.5s;"></div>' +
+        '</div>' +
+        '<div style="width:70px; font-size:12px; font-weight:600; color:var(--text-primary); text-align:right;">¥' + formatNumber(val) + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+
+    html += '<p style="font-size:11px; color:var(--text-muted); margin-top:10px;">※世帯平均月額（家計調査ベース推計値）</p>' +
+      '</div></div>';
+  }
+
+  // ⑨ 出店適性スコア（有料）
   if (m.location_score) {
     var ls = m.location_score;
     var gradeColor = { S: '#10b981', A: '#3b82f6', B: '#f59e0b', C: '#f97316', D: '#ef4444' };
     var gc = gradeColor[ls.grade] || '#94a3b8';
     html += '<div class="result-card' + paidClass + '" data-section="paid">' +
       '<div class="result-card__header"><div class="result-card__icon">🎯</div>' +
-      '<div><div class="result-card__title">⑧ 出店適性スコア</div>' +
+      '<div><div class="result-card__title">⑨ 出店適性スコア</div>' +
       '<div class="result-card__subtitle">' + (purchased ? '' : '<span class="badge-paid">有料</span>') + '</div></div></div>' +
       '<div class="result-card__body">' + paidOverlay +
       '<div style="text-align:center; margin-bottom:16px;">' +
@@ -874,13 +944,13 @@ function renderResults(data, purchased) {
     html += '</div></div>';
   }
 
-  // ⑨ 集客チャネル（有料）
+  // ⑩ 集客チャネル（有料）
   if (m.marketing_channels) {
     var mc = m.marketing_channels;
     var channels = mc.channels || [];
     html += '<div class="result-card' + paidClass + '" data-section="paid">' +
       '<div class="result-card__header"><div class="result-card__icon">📢</div>' +
-      '<div><div class="result-card__title">⑨ 集客チャネル</div>' +
+      '<div><div class="result-card__title">⑩ 集客チャネル</div>' +
       '<div class="result-card__subtitle">' + (purchased ? '' : '<span class="badge-paid">有料</span>') + '</div></div></div>' +
       '<div class="result-card__body">' + paidOverlay;
 
@@ -1313,15 +1383,40 @@ async function exportPDF() {
     html += '<table style="' + TBL + '">';
     html += r('平均世帯年収（万円）', sp.avg_household_income ? toMan(sp.avg_household_income) : '—');
     html += r('可処分所得（万円）', sp.disposable_income ? toMan(sp.disposable_income) : '—');
+    html += r('月間消費支出（万円）', sp.monthly_expenditure ? toMan(sp.monthly_expenditure) : '—');
+    html += r('エンゲル係数（%）', sp.engel_coefficient || '—');
     html += r('小売消費指数（全国=100）', sp.retail_spending_index || '—');
     html += r('飲食消費指数（全国=100）', sp.food_spending_index || '—');
+    html += r('サービス消費指数（全国=100）', sp.service_spending_index || '—');
+    html += r('外食率（%）', sp.eating_out_rate || '—');
+    html += '</table></div>';
+  }
+
+  // ===== 消費支出内訳 =====
+  if (m.consumer_spending) {
+    var cs = m.consumer_spending;
+    html += '<div style="' + S + '"><div style="' + T + '">8. 消費支出内訳（世帯月額）</div>';
+    html += '<table style="' + TBL + '">';
+    html += r('食料費', cs.food_total ? '¥' + formatNumber(cs.food_total) : '—');
+    html += r('外食費', cs.eating_out ? '¥' + formatNumber(cs.eating_out) : '—');
+    html += r('住居費', cs.housing ? '¥' + formatNumber(cs.housing) : '—');
+    html += r('光熱・水道', cs.utilities ? '¥' + formatNumber(cs.utilities) : '—');
+    html += r('交通費', cs.transportation ? '¥' + formatNumber(cs.transportation) : '—');
+    html += r('通信費', cs.communication ? '¥' + formatNumber(cs.communication) : '—');
+    html += r('教育費', cs.education ? '¥' + formatNumber(cs.education) : '—');
+    html += r('教養娯楽費', cs.entertainment ? '¥' + formatNumber(cs.entertainment) : '—');
+    html += r('医療費', cs.medical ? '¥' + formatNumber(cs.medical) : '—');
+    html += r('被服費', cs.clothing ? '¥' + formatNumber(cs.clothing) : '—');
+    html += r('理美容費', cs.personal_care ? '¥' + formatNumber(cs.personal_care) : '—');
+    html += r('交際費', cs.social_expenses ? '¥' + formatNumber(cs.social_expenses) : '—');
+    html += r('月間合計', cs.total_monthly ? '¥' + formatNumber(cs.total_monthly) : '—');
     html += '</table></div>';
   }
 
   // ===== 出店適性スコア =====
   if (m.location_score) {
     var ls = m.location_score;
-    html += '<div style="' + S + '"><div style="' + T + '">8. 出店適性スコア</div>';
+    html += '<div style="' + S + '"><div style="' + T + '">9. 出店適性スコア</div>';
     html += '<table style="' + TBL + '">';
     html += r('総合スコア（/100）', ls.overall_score || '—');
     html += r('グレード', ls.grade || '—');
@@ -1337,7 +1432,7 @@ async function exportPDF() {
   // ===== 集客チャネル =====
   if (m.marketing_channels) {
     var mc = m.marketing_channels;
-    html += '<div style="' + S + '"><div style="' + T + '">9. 集客チャネル</div>';
+    html += '<div style="' + S + '"><div style="' + T + '">10. 集客チャネル</div>';
     if (mc.channels && mc.channels.length > 0) {
       html += '<table style="' + TBL + '">';
       html += '<tr><th style="' + TH + 'width:26%;">チャネル</th><th style="' + TH + 'width:12%;">スコア</th><th style="' + TH + 'width:62%;">理由</th></tr>';
@@ -1488,11 +1583,32 @@ function exportExcel() {
   var sp = m.spending_power || {};
   pushDataRow('平均世帯年収（万円）', sp.avg_household_income ? toMan(sp.avg_household_income) : '', '');
   pushDataRow('可処分所得（万円）', sp.disposable_income ? toMan(sp.disposable_income) : '', '');
+  pushDataRow('月間消費支出（万円）', sp.monthly_expenditure ? toMan(sp.monthly_expenditure) : '', '');
+  pushDataRow('エンゲル係数（%）', sp.engel_coefficient || '', '');
   pushDataRow('小売消費指数（全国=100）', sp.retail_spending_index, '');
   pushDataRow('飲食消費指数（全国=100）', sp.food_spending_index, '');
+  pushDataRow('サービス消費指数（全国=100）', sp.service_spending_index || '', '');
+  pushDataRow('外食率（%）', sp.eating_out_rate || '', '');
 
-  // ===== ⑦ 出店適性スコア =====
-  pushSectionHeader('⑦ 出店適性スコア');
+  // ===== ⑥-2 消費支出内訳 =====
+  pushSectionHeader('⑥-2 消費支出内訳（世帯月額・円）');
+  var cs = m.consumer_spending || {};
+  pushDataRow('食料費', cs.food_total || '', '');
+  pushDataRow('外食費', cs.eating_out || '', '');
+  pushDataRow('住居費', cs.housing || '', '');
+  pushDataRow('光熱・水道', cs.utilities || '', '');
+  pushDataRow('交通費', cs.transportation || '', '');
+  pushDataRow('通信費', cs.communication || '', '');
+  pushDataRow('教育費', cs.education || '', '');
+  pushDataRow('教養娯楽費', cs.entertainment || '', '');
+  pushDataRow('医療費', cs.medical || '', '');
+  pushDataRow('被服費', cs.clothing || '', '');
+  pushDataRow('理美容費', cs.personal_care || '', '');
+  pushDataRow('交際費', cs.social_expenses || '', '');
+  pushDataRow('月間合計', cs.total_monthly || '', '');
+
+  // ===== ⑧ 出店適性スコア =====
+  pushSectionHeader('⑧ 出店適性スコア');
   var ls = m.location_score || {};
   pushDataRow('総合スコア（/100）', ls.overall_score, '');
   pushDataRow('グレード', ls.grade, '');
@@ -1503,8 +1619,8 @@ function exportExcel() {
   pushDataRow('成長性スコア', ls.growth_score, '');
   if (ls.ai_recommendation) pushDataRow('AI総合判定', ls.ai_recommendation, '');
 
-  // ===== ⑧ 集客チャネル =====
-  pushSectionHeader('⑧ 集客チャネル');
+  // ===== ⑨ 集客チャネル =====
+  pushSectionHeader('⑨ 集客チャネル');
   var mc = m.marketing_channels || {};
   var channels = mc.channels || [];
   if (channels.length > 0) {
@@ -1526,8 +1642,8 @@ function exportExcel() {
   pushDataRow('最も推奨チャネル', mc.best_channel, '');
   pushDataRow('集客戦略サマリー', mc.strategy_summary, '');
 
-  // ===== ⑨ AI商圏分析サマリー =====
-  pushSectionHeader('⑨ AI商圏分析サマリー');
+  // ===== ⑩ AI商圏分析サマリー =====
+  pushSectionHeader('⑩ AI商圏分析サマリー');
   var summaryText = m.shoken_summary || '';
   var formattedSummary = summaryText.replace(/\r\n|\r|\n/g, '\r\n');
   var summaryRowIdx = rows.length;
