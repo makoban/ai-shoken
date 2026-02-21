@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI出店商圏レポート - エリア商圏分析を自動生成</title>
+  <meta name="description" content="エリア名を入力するだけ。AIが政府統計データをもとに出店エリアの商圏レポートを自動生成します。人口・事業所・競合密度・消費力を一括分析。">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+  <!-- Background Effects -->
+  <div class="bg-grid"></div>
+  <div class="bg-blob bg-blob--1"></div>
+  <div class="bg-blob bg-blob--2"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container header__inner">
+      <div class="header__logo">
+        <div class="header__logo-icon">🏪</div>
+        <span class="header__logo-text">AI出店商圏レポート</span>
+      </div>
+      <div class="header__actions">
+        <div id="auth-area"></div>
+        <div class="header__badge">v1.0</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero__content">
+        <div class="hero__badge">
+          <span class="hero__badge-dot"></span>
+          AI-Powered Trade Area Analysis
+        </div>
+        <h1 class="hero__title">AI出店商圏<span>レポート</span></h1>
+        <p class="hero__subtitle">
+          エリア名を入力するだけ。<br>
+          AIが政府統計データをもとに、出店エリアの商圏レポートを自動生成します。
+        </p>
+
+        <!-- Search Card -->
+        <div class="search-card">
+          <label class="search__label" for="area-input">📍 分析したいエリア名を入力してください</label>
+          <div class="search__input-wrap">
+            <div class="search__autocomplete">
+              <input
+                type="text"
+                id="area-input"
+                class="search__input"
+                placeholder="例: 渋谷区、岡山市、北海道..."
+                autocomplete="off"
+              >
+              <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+            </div>
+            <button id="analyze-btn" class="search__btn" onclick="startAnalysis()">
+              <span class="btn-text">🔍 分析開始</span>
+              <span class="spinner"></span>
+            </button>
+          </div>
+          <p class="search__hint">💡 都道府県名・市区町村名を入力してください（全国1,892エリア対応）</p>
+          <div id="error-msg" class="error-msg"></div>
+        </div>
+
+        <!-- Features -->
+        <div class="features">
+          <div class="feature-item">
+            <div class="feature-item__icon">📊</div>
+            <div class="feature-item__title">政府統計データ</div>
+            <div class="feature-item__desc">e-Stat実データで正確分析</div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-item__icon">🤖</div>
+            <div class="feature-item__title">AI商圏分析</div>
+            <div class="feature-item__desc">事業所・競合密度・消費力を分析</div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-item__icon">📊</div>
+            <div class="feature-item__title">Excelレポート</div>
+            <div class="feature-item__desc">分析結果をワンクリック出力</div>
+          </div>
+        </div>
+
+        <!-- Pricing info -->
+        <div class="pricing-info">
+          <div class="pricing-info__free">
+            <span class="pricing-info__badge pricing-info__badge--free">無料</span>
+            人口・世帯数データ
+          </div>
+          <div class="pricing-info__paid">
+            <span class="pricing-info__badge pricing-info__badge--paid">¥300</span>
+            事業所統計・年齢構成・競合密度・昼間人口・消費力指数・出店適性スコア・集客チャネル・Excel出力
+          </div>
+        </div>
+      </div>
+
+      <!-- OL Character -->
+      <div class="hero__character-wrap">
+        <img src="OL2.png" class="hero__character" alt="OL Character">
+      </div>
+    </div>
+  </section>
+
+  <!-- Progress -->
+  <section id="progress-section" class="progress-section">
+    <div class="container">
+      <div class="progress__steps">
+        <div class="progress__step" id="step-data">
+          <div class="progress__step-icon">📊</div>
+          <div class="progress__step-content">
+             <div class="progress__step-title">統計データ取得</div>
+             <div class="progress__step-desc">政府統計APIからデータを取得中...</div>
+          </div>
+        </div>
+        <div class="progress__step" id="step-ai">
+          <div class="progress__step-icon">🤖</div>
+          <div class="progress__step-content">
+             <div class="progress__step-title">AI商圏分析</div>
+             <div class="progress__step-desc">AIが商圏データを分析中...</div>
+          </div>
+        </div>
+        <div class="progress__step" id="step-report">
+          <div class="progress__step-icon">📄</div>
+          <div class="progress__step-content">
+             <div class="progress__step-title">レポート作成</div>
+             <div class="progress__step-desc">レポートを生成中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- progress log hidden in production -->
+      <div id="progress-log-content" style="display:none;"></div>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="results-section" class="results-section">
+    <div class="container">
+      <div class="results__header">
+        <h2 class="results__title">📋 分析レポート</h2>
+        <div class="results__actions">
+          <button class="btn-pdf" onclick="handlePdfDownload()" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);">📄 PDF出力</button>
+          <button class="btn-excel" onclick="handleExcelDownload()" style="background:linear-gradient(135deg,#10b981,#059669);">📊 Excel出力</button>
+          <button class="btn-rerun" onclick="resetAll()">🔄 新規分析</button>
+        </div>
+      </div>
+      <div id="results-content">
+        <!-- Dynamically filled by app.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Purchase Prompt (overlay for paid content) -->
+  <div id="purchase-prompt" class="purchase-prompt" style="display:none;">
+    <div class="purchase-prompt__card">
+      <div class="purchase-prompt__icon">🔒</div>
+      <h3 class="purchase-prompt__title">完全版レポートを購入</h3>
+      <p class="purchase-prompt__desc">
+        事業所統計・年齢構成・競合密度・昼間人口・消費力指数・出店適性スコア・集客チャネル・Excel出力が含まれます。
+      </p>
+      <div class="purchase-prompt__price">
+        <span class="purchase-prompt__amount">¥300</span>
+        <span class="purchase-prompt__unit">/ 1エリア（税込）</span>
+      </div>
+      <button id="purchase-btn" class="purchase-prompt__btn" onclick="startCheckout()">
+        💳 購入してレポートを見る
+      </button>
+      <button class="purchase-prompt__cancel" onclick="cancelPurchasePrompt()">
+        ✕ 閉じる
+      </button>
+      <p class="purchase-prompt__note">購入済みエリアは履歴からいつでも再閲覧できます</p>
+    </div>
+  </div>
+
+  <!-- Purchase History Modal -->
+  <div id="history-modal" class="modal">
+    <div class="modal__content" style="max-width:560px;">
+      <div class="modal__header">
+        <h3>📋 購入履歴</h3>
+        <button class="modal__close" onclick="document.getElementById('history-modal').classList.remove('active')">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p class="modal__desc">購入済みエリアのレポートを再閲覧できます。</p>
+        <div id="history-list" style="display:flex; flex-direction:column; gap:8px;">
+          <p style="color:var(--text-muted); font-size:13px;">購入履歴はありません</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div id="login-modal" class="modal">
+    <div class="modal__content" style="max-width:440px;">
+      <div class="modal__header">
+        <h3 id="auth-mode-title">ログイン</h3>
+        <button class="modal__close" onclick="document.getElementById('login-modal').classList.remove('active')">&times;</button>
+      </div>
+      <div class="modal__body">
+        <form id="auth-form" class="auth-form" data-mode="login" onsubmit="handleAuthSubmit(event)">
+          <input
+            type="email"
+            id="auth-email"
+            class="auth-form__input"
+            placeholder="メールアドレス"
+            autocomplete="email"
+            required
+          >
+          <input
+            type="password"
+            id="auth-password"
+            class="auth-form__input"
+            placeholder="パスワード（6文字以上）"
+            autocomplete="current-password"
+            required
+          >
+          <p id="auth-error" class="auth-error"></p>
+          <button type="submit" id="auth-submit-btn" class="auth-form__submit">ログイン</button>
+          <p id="auth-forgot" class="auth-forgot"><a href="#" onclick="showPasswordReset(); return false;">パスワードをお忘れの方</a></p>
+        </form>
+        <div class="auth-divider">または</div>
+        <button class="auth-google-btn" onclick="loginWithGoogle()">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Googleでログイン
+        </button>
+        <p id="auth-switch-text" class="auth-switch">
+          アカウントをお持ちでない方は <a href="#" onclick="switchAuthMode('signup'); return false;">新規登録</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Area Select Modal -->
+  <div id="area-select-modal" class="modal">
+    <div class="modal__content" style="max-width:480px;">
+      <div class="modal__header">
+        <h3>📍 エリアを選択してください</h3>
+        <button class="modal__close" onclick="document.getElementById('area-select-modal').classList.remove('active')">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p class="modal__desc">同じ名前のエリアが複数見つかりました。分析したいエリアを選んでください。</p>
+        <div id="area-select-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sample Output -->
+  <section class="sample-section" id="sample">
+    <div class="container">
+      <div class="sample__header">
+        <p class="sample__label">Sample Report</p>
+        <h2 class="sample__title">出力例：東京都渋谷区</h2>
+        <p class="sample__desc">実際のレポートではAIが最新の政府統計データをもとに分析します</p>
+      </div>
+
+      <div class="sample-report-preview">
+        <div class="sample-report-scroll">
+          <img src="sample_report_full.png" alt="渋谷区 AI出店商圏レポート 出力例 - 人口・世帯データ、年齢構成、事業所統計、競合密度、昼間人口、消費力指数、出店適性スコア、集客チャネル、AI商圏分析の全9セクション" class="sample-report-img" loading="lazy">
+        </div>
+        <div class="sample-report-fade"></div>
+      </div>
+
+      <div class="sample-cta">
+        <p>人口・年齢構成・事業所統計・競合密度・昼間人口・消費力指数・出店適性スコア・集客チャネル・AI商圏分析の<strong>全9セクション</strong></p>
+        <a href="#area-input" class="sample-cta__btn" onclick="document.getElementById('area-input').focus();">分析してみる →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Receipt Info -->
+  <section class="receipt-section" id="receipt-info">
+    <div class="container">
+      <h2 class="receipt__title">🧾 領収書について</h2>
+      <div class="receipt__cards">
+        <div class="receipt__card">
+          <div class="receipt__card-icon">📧</div>
+          <h3>自動送信</h3>
+          <p>決済完了後、ご登録のメールアドレスにStripeから領収書が自動送信されます。</p>
+        </div>
+        <div class="receipt__card">
+          <div class="receipt__card-icon">📄</div>
+          <h3>記載内容</h3>
+          <p>金額（¥300税込）、決済日時、カード下4桁、商品名が記載されます。</p>
+        </div>
+        <div class="receipt__card">
+          <div class="receipt__card-icon">🔄</div>
+          <h3>再発行</h3>
+          <p>領収書の再発行が必要な場合は <a href="mailto:info@bantex.jp">info@bantex.jp</a> までご連絡ください。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p class="footer__text">&copy; 2026 AI出店商圏レポート v1.0 &mdash; Powered by AI + 政府統計データ</p>
+      <div class="footer__links">
+        <a href="https://bantex.jp/terms.html" target="_blank">利用規約</a>
+        <a href="https://bantex.jp/privacy.html" target="_blank">プライバシーポリシー</a>
+        <a href="https://bantex.jp/tokushoho.html" target="_blank">特定商取引法に基づく表記</a>
+        <a href="mailto:info@bantex.jp">お問い合わせ</a>
+        <a href="#receipt-info">領収書について</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="area-database.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
