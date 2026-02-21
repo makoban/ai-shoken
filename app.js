@@ -153,7 +153,9 @@ var _pendingCheckout = false;
 
 function initSupabase() {
   if (typeof supabase !== 'undefined' && supabase.createClient) {
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { flowType: 'implicit' }
+    });
     // onAuthStateChangeのみで管理（INITIAL_SESSIONイベントで初期セッションも通知される）
     supabaseClient.auth.onAuthStateChange(function(event, session) {
       currentUser = session ? session.user : null;
@@ -290,9 +292,11 @@ async function handleAuthSubmit(e) {
 
 async function loginWithGoogle() {
   if (!supabaseClient) return;
+  var currentUrl = window.location.origin + window.location.pathname;
+  // hashやqueryを除いたクリーンなURLを渡す
   var result = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin + window.location.pathname }
+    options: { redirectTo: currentUrl }
   });
   if (result.error) {
     document.getElementById('auth-error').textContent = result.error.message || 'Googleログインエラー';
