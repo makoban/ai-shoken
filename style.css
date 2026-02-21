@@ -411,7 +411,7 @@ body {
 }
 
 .feature-item {
-  background: var(--glass);
+  background: rgba(10, 14, 26, 0.85);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 20px;
@@ -1645,7 +1645,7 @@ body {
   gap: 10px;
   font-size: 14px;
   color: var(--text-secondary);
-  background: var(--glass);
+  background: rgba(10, 14, 26, 0.85);
   border: 1px solid var(--glass-border);
   border-radius: 30px;
   padding: 8px 18px;
